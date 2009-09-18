@@ -1,0 +1,181 @@
+/** \page solver Struttura del solutore
+
+<div class="navtop">\ref index "Introduzione"
+  | \ref tutorial "Esempi guidati"
+  | \ref half-edge "Gestione della mesh"
+  | \b Struttura \b del \b solutore
+  | \ref model "Struttura del modello"
+</div>
+
+\section solver-traits Traits della Mesh
+La struttura dati che gestisce la mesh è composta da vertici, lati ed elementi poligonali. Estendere però queste classi può diventare difficoltoso perché sono intimamente legate tra loro, per via della struttura topologica. Una possibile soluzione è quella di utilizzare i \c templates e definire le classi solo una volta che sono state estese.
+
+Supponiamo ad esempio di aver definito le classi primitive BaseVertex, BaseHEdge, BasePolygon e BasePolygonalMesh. Queste non sono ancora ben definite, ma dipendono dalla scelta del \c KERNEL. Si procede allora in questo modo:
+\code
+template <typename T>
+struct DefaultTraits {
+    class Kernel;
+    class Vertex;
+    class HEdge;
+    class Polygon;
+    class PolygonalMesh;
+	
+    class Kernel : public BaseKernel<T, Vertex, HEdge, Polygon, PolygonalMesh> {};
+    class Vertex : public BaseVertex<Kernel> {};
+    class HEdge : public BaseHEdge<Kernel> {};
+    class Polygon : public BasePolygon<Kernel> {};
+    class PolygonalMesh : public BasePolygonalMesh<Kernel> {};
+};
+\endcode
+Per esempio la classe Vertex deriva dalla classe BaseVertex, la quale però ha come parametro \c KERNEL, che a sua volta dipende da Vertex stesso! In realtà il cane non si morde la coda, perché il compilatore si fida del fatto che la classe Vertex verrà definita in seguito. In questo modo se un metodo della classe BaseVertex (e quindi della classe Vertex) può restituire un tipo di dato Vertex senza dover complicare troppo il codice con metodi virtuali.
+
+Inoltre è possibile estendere a proprio piacimento tutte queste classi senza modificare le classi primitive. Nel caso dei Volumi Finiti per esempio si potrebbe avere:
+\code
+template <typename T, typename SOLTYPE>
+struct DefaultTraits {
+    class Kernel;
+    class Vertex;
+    class HEdge;
+    class Polygon;
+    class PolygonalMesh;
+
+    class Kernel : public BaseKernel<T, Vertex, HEdge, Polygon, PolygonalMesh> {};
+    class Vertex : public BaseVertex<Kernel> {};
+    class HEdge : public BaseHEdge<Kernel> {};
+    class Polygon : public BasePolygon<Kernel> {
+        public:
+            SOLTYPE sol, sol0;
+    };
+    class PolygonalMesh : public BasePolygonalMesh<Kernel> {};
+};
+\endcode
+In questo caso abbiamo esteso la classe Polygon aggiungendo due attributi \c sol e \c sol0, che rappresentano la soluzione in quel dato elemento (in generale sono dei vettori).
+
+\subsection solver-class La classe del solutore
+
+La struttura generale della classe \c Solver::FiniteVolume è la seguente:
+\code
+template <typename MODEL, typename NUMFLUX>
+class FiniteVolume {
+	private:
+		typedef typename MODEL::real_t							real_t;
+		typedef typename MODEL::SolType							SolType;
+		typedef typename Mesh::DefaultTraits<real_t,SolType>	Traits;
+	public:
+		// Mesh
+		typedef typename Traits::PolygonalMesh		FVMesh;
+	private:
+		// Condizioni iniziali e termine sorgente
+		// [in ingresso x, y e colore]
+		typedef SolType (*INITCOND)( size_t, real_t, real_t );
+		// [in ingresso stato a sinistra, x, y, normale, t e colore]
+		typedef SolType (*BOUNDARYCOND)( SolType&, size_t, real_t, real_t, real_t, real_t, real_t );
+		// [in ingresso x, y, t e colore]
+		typedef SolType (*SOURCE)( const SolType&, size_t, real_t, real_t, real_t );
+
+		// Valuta rhs del poligono dato
+		inline SolType RHS( const polygon_ptr ) const;
+
+	public:
+		FiniteVolume( MODEL& model, FVMesh& mesh )
+			:model_(model),mesh_(mesh),NumFlux(model),cflmax_(0.0),hmax_(0.0),currtime_(0.0) {};
+		
+		// Impostazioni
+		void setCFLmax ( real_t cflm ) { cflmax_ = cflm; }
+		void setIC ( INITCOND ic ) { InitialCondition = ic; }
+		void setBC ( BOUNDARYCOND bc ) { BoundaryCondition = bc; }
+		void setSource ( SOURCE s ) { Source = s; }
+		void setDirectory ( const string& dir ) { datadir_ = dir; }
+		// Accesso
+		real_t getCurrTime(void) { return currtime_; }
+		real_t getCurrDt(void) { return dt_; }
+		
+		// Inizializza il solutore
+		void init();
+		// Passo temporale
+		void timestep();
+	private:
+		void updateTimestep();
+	public:
+		void framegrab(size_t const, bool, bool) const;
+
+	private:
+		// Modello
+		MODEL& model_;
+		// Mesh
+		FVMesh& mesh_;
+		// Flusso numerico
+		NUMFLUX NumFlux;
+		// Condizioni iniziali e bordo
+		INITCOND		InitialCondition;
+		BOUNDARYCOND	BoundaryCondition;
+		SOURCE			Source;
+		// Altro
+		real_t cflmax_, hmax_, dt_, currtime_;
+		string datadir_;
+};
+\endcode
+La definizione della classe dipende da due parametri, il flusso numerico \c NUMFLUX e il modello \c MODEL. La mesh è definita all'interno del solutore, in modo che possano essere disponibili le estensioni necessarie.
+
+Per le condizioni iniziali, al bordo e il termine sorgente sono definite le signature delle funzioni che il codice principale dovrà fornire. 
+
+Tra i metodi pubblici del solutore vi sono quelli atti ad assegnare tutti i parametri necessari alla simulazione, come il numero CFL massimo o la directory nella quale salvare i risultati dell'elaborazione.
+
+Il metodo più importante, che analizziamo in dettaglio, riguarda invece l'esecuzione di un passo temporale. Questo non è nient'altro che l'implementazione dello schema a Volumi Finiti:
+\code
+template <typename MODEL, typename NUMFLUX>
+inline void FiniteVolume<MODEL,NUMFLUX>::timestep( void ) {
+	// Salvo la soluzione al passo precedente e calcolo maxLambda
+	updateTimestep();
+	for (p_it p = mesh_.p_begin(); p != mesh_.p_end(); ++p) {
+		(*p)->sol0 = (*p)->sol;
+		if ( !model_.ConsistentState((*p)->sol0) ) {
+			std::cerr << "Bad state solution! Maybe too high CFL number ..." << std::endl;
+			exit(1);
+		}
+	}
+	// Itero sui poligoni
+	for (p_it p = mesh_.p_begin(); p != mesh_.p_end(); ++p) {
+		// Risolvo l'ODE
+		(*p)->sol = (*p)->sol0 + dt_ * RHS(*p);
+	}
+	// Aggiorno currtime_
+	currtime_ += dt_;
+}		
+\endcode
+In questa parte tutto il calcolo vero e proprio è delegato alla procedure \c RHS:
+\code
+template <typename MODEL,typename NUMFLUX>
+inline typename MODEL::SolType FiniteVolume<MODEL,NUMFLUX>::RHS( const polygon_ptr p ) const {
+	// Valuto il flusso attraverso i bordi
+	SolType Flux = SolType::Zero();
+	// Stato a sinistra
+	SolType qlstate = p->sol0;
+	// Stato a destra
+	SolType qrstate;
+	he_cit e = p->beginE();
+	do {
+		if ( !e->isBoundary() ) {
+			// Lato interno
+			qrstate = e->polygonR().sol0;
+		} else {
+			// Lato di bordo
+			SolType wl = model_.ConservativeToPrimitive(qlstate);
+			SolType wr = BoundaryCondition(wl,e->getColor(),e->xm(),e->ym(),e->nx(),e->ny(),currtime_);
+			qrstate = model_.PrimitiveToConservative(wr);
+		}
+		Flux += e->length() * NumFlux(qlstate, qrstate, e->nx(), e->ny());
+		++e;
+	} while ( e != p->beginE() );
+	// Valuto il termine sorgente, se presente
+	SolType SourceTerm = SolType::Zero();
+	if ( !Source ) SourceTerm = Source( qlstate, p->getColor(), p->cx(), p->cy(), currtime_ );
+	// Sommo e divido per l'area
+	return (SourceTerm - Flux) / p->area();
+}
+\endcode
+Il nodo cruciale della procedura precedente è la distinzione tra i lati di bordo e lati interni. Nel primo caso si richiama la condizione al contorno relativa a tale lato e si assegna al poligono adiacente la condizione stessa, mentre nel secondo si utilizza il vero valore della soluzione del poligono adiacente. Una volta che si hanno a disposizione gli stati destro e sinistro del lato si può calcolare il flusso numerico.
+
+Vi è inoltre la procedura \c framegrab il cui compito è quello di salvare su file la soluzione al passo temporale corrente, secondo il formato desiderato (Matlab o Gnuplot). Si può anche scegliere se interpolare la soluzione nei vertici (ricordiamo che la soluzione è una funzione costante a tratti ed è quindi definita solo nei baricentri dei poligoni).
+
+**/

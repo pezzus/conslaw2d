@@ -1,0 +1,58 @@
+\section{Leggi di conservazione non lineari}
+\subsection{Formulazione integrale e differenziale}
+Una generica legge di conservazione si può scrivere in forma integrale come:
+\begin{equation} \label{eq:conslawintegrale}
+\int_\omega \pdd{\mathbf u}{t} \: \dd{x} + \oint_{\partial \omega} \Flux \cdot \nn \: \dd{\gamma}
+= \int_\omega \mathbf S \: \dd{x}
+\end{equation}
+dove $\omega \subset \Omega \subseteq \mathbb{R}^d$, $d=1,2,3$, è un \emph{volume di controllo} arbitrario all'interno del dominio $\Omega$ nel quale si studia il problema, $\mathbf u = \mathbf{u}(x,t)$ è il vettore delle $m$ variabili conservate, $\Flux = \Flux(\mathbf u)$ è il tensore di flusso attraverso $\partial \omega$ ed infine $\mathbf S = \mathbf S(\mathbf u, x, t)$ è un'eventuale sorgente esterna.
+
+L'equazione \eqref{eq:conslawintegrale} esprime in termini matematici il fatto che la variazione di $\mathbf u$ all'interno di $\omega$ è pari al flusso netto attraverso il bordo più un eventuale termine sorgente.
+ 
+Spesso la legge di conservazione si esprime in termini differenziali:
+\begin{equation} \label{eq:conslawdiff}
+\begin{cases}
+\; \pdd{\mathbf u(x,t)}{t} + \diverg \Flux(\mathbf u) = \mathbf S(\mathbf u,x,t) & \text{con $x \in \Omega$, $t > 0$} \\[1ex]
+\; \mathbf{u}(x,0) = \mathbf u_0(x) \\[1ex]
+\; \text{+ condizioni al bordo}
+\end{cases}
+\end{equation}
+
+Tale formulazione è ragionevole a patto di garantire sufficiente della soluzione $\mathbf u$. Purtroppo nelle leggi di conservazione non lineari è lecito aspettarsi soluzioni discontinue, indipendentemente dalla regolarità dei dati iniziali: in questi casi il problema differenziale \eqref{eq:conslawdiff} perde di significato lungo le discontinuità e si deve far riferimento a \eqref{eq:conslawintegrale}.
+ 
+Il sistema \eqref{eq:conslawdiff} si può scrivere in forma quasi-lineare sviluppando le derivate nel termine di divergenza. Ad esempio con $\Omega \subset \mathbb{R}^2$ e $\Flux = \begin{bmatrix} \Flux_1 & \Flux_2 \end{bmatrix}$ si ha:
+\begin{equation}\label{eq:conslawquasilin}
+\pdd{\mathbf u(x,t)}{t} + \mathbf{A}_1(\mathbf{u}) \pdd{\mathbf u}{x_1} + \mathbf{A}_2(\mathbf{u}) \pdd{\mathbf u}{x_2} 
+= \mathbf 0
+\end{equation}
+dove si è posto $\mathbf{A}_i(\mathbf{u}) = \pdd{\Flux_i(\mathbf{u})}{\mathbf u}$ e, per comodità, $\mathbf S \equiv \mathbf 0$.
+
+\subsection{Soluzioni ad onde piane}
+Le soluzioni ad \emph{onde piane} per il sistema \eqref{eq:conslawquasilin} rivestono un ruolo particolarmente interessante: supponiamo di partire con un dato iniziale $\mathbf u(x,0) = \mathbf{u}_0 (\xi)$, con $\xi = x \cdot \nn$, cioè consideriamo una funzione che varia solo in direzione $\nn$, e chiediamoci se è possibile avere una soluzione del tipo $\mathbf u(x,t) = \mathbf{u}(\xi-\lambda t)$.
+
+Affinché sia possibile $\lambda$ dev'essere un autovalore di $\mathbf{A}(\mathbf{u}; \nn) := \mathbf{A}_1(\mathbf{u}) n_x + \mathbf{A}_2(\mathbf{u}) n_y$ e $\mathbf{u}$ il corrispondente autovettore. Quindi, se $\mathbf{A}(\mathbf{u}; \nn)$ è diagonalizzabile con autovalori reali allora è possibile trovare una soluzione ad onde piane. Infatti in questo caso il sistema \eqref{eq:conslawquasilin} diventa:
+\begin{equation} \label{eq:conslawondepiane}
+\pdd{\mathbf{u}}{t} + \mathbf{A}(\mathbf{u};\nn) \pdd{\mathbf u}{\xi} = \mathbf{0}
+\end{equation}
+ 
+L'equazione \eqref{eq:conslawondepiane}, che si può riscrivere in modo equivalente come:
+\begin{equation*}
+\pdd{\mathbf{u}}{t} + \pdd{}{\xi} \Flux(\mathbf{u};\nn) = \mathbf{0}
+\end{equation*}
+con $\Flux(\mathbf{u};\nn) = \Flux(\mathbf{u}) \cdot \nn$, risulterà fondamentale nel momento in cui verrà implementato il metodo dei Volumi Finiti su griglie non strutturate, in quanto suggerisce come discretizzare il problema in modo da trovare un adeguato flusso numerico lungo una direzione $\nn$ data.
+ 
+\subsection{Problema di Riemann}
+Tra le soluzioni ad onde piane risultano particolarmente importanti quelle che soddisfano il problema di Riemann:
+\begin{equation} \label{eq:conslawriemann}
+\begin{cases}
+\pdd{\mathbf u}{t} + \pdd{}{\xi}\Flux(\mathbf u; \nn) = \mathbf 0 & \text{con $\xi \in \mathbb{R}$, $t > 0$} \\[1.2ex]
+\mathbf{u}(\xi,0) = \begin{cases} \mathbf u_L & \text{per $\xi < 0$} \\ \mathbf u_R & \text{per $\xi > 0$} \end{cases}
+\end{cases}
+\end{equation}
+Il sistema, a tutti gli effetti monodimensionale, si può studiare in dettaglio fissata $\Flux(\mathbf u; \nn)$: in particolare si può far ricorso a tutta la teoria per sistemi di equazioni non lineari 1D.
+
+Dalla stretta iperbolicità di $\mathbf{A}(\mathbf{u};\nn)$ possiamo trovare sempre un insieme $\bigl\{ \lambda_1, \ldots, \lambda_m \bigr\}$  di $m$ autovalori e un insieme di $m$ autovettori corrispondenti $\bigl\{ \mathbf{r}_1, \ldots, \mathbf{r}_m \bigr\}$, ed è possibile mostrare che il problema di Riemann \eqref{eq:conslawriemann} ha una soluzione che consiste in $m+1$ stati costanti i quali possono essere connessi da shocks, onde di rarefazione o discontinuità di contatto \cite{Kroner97}.
+
+In generale per il problema di Riemann \eqref{eq:conslawriemann} la soluzione non è unica: nascono a questo proposito diverse condizioni, dette di \emph{entropia}, che se soddisfatte garantiscono in una certa misura che la soluzione trovata sia quella fisicamente più ragionevole.
+
+Da un punto di vista numerico il problema si pone nel momento in cui si cerca di approssimare la soluzione, perché il metodo che si utilizza potrebbe non garantire a priori la convergenza alla soluzione entropica. La situazione tipica è la presenza di un'onda di shock al posto di un'onda di rarefazione.

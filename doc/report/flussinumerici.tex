@@ -1,0 +1,61 @@
+\section{Flussi numerici} \label{app:flussinum}
+Nello schema \eqref{eq:schemavolumifiniti} resta ancora da scegliere il flusso numerico $\NumFlux(\mathbf U^n_i, \mathbf U^n_j, \nn_{ij})$, il quale deve soddisfare le seguenti proprietà:
+\begin{enumerate}
+\item $\abs{\NumFlux(u, v, \nn_{ij}) - \NumFlux(u', v', \nn_{ij}) } \le C \max_i \diam K_i \bigl( \abs{u-u'} + \abs{v-v'} \bigr)$;
+\item $\NumFlux(u, v, \nn_{ij}) = - \NumFlux(v, u, \nn_{ji})$;
+\item $\NumFlux(u, u, \nn_{ij}) = \Flux(u; \nn_{ij})$.
+\end{enumerate}
+La prima è una condizione di Lipschitzianità, la seconda indica che il flusso è conservativo, mentre l'ultima è una relazione di consistenza.
+
+Come già osservato, in direzione normale il problema è essenzialmente monodimensionale: possiamo quindi utilizzare flussi numerici già noti.
+\subsection{Metodo di Lax-Friedrichs}
+Il metodo di Lax-Friedrichs utilizza un flusso del tipo:
+\begin{equation*}
+\NumFlux(\mathbf U_i, \mathbf U_j, \nn_{ij}) = \frac{1}{2} \left[ \Flux(\mathbf U_i; \nn_{ij}) + \Flux (\mathbf U_j; \nn_{ij}) \right] - \frac{c}{2} \left( \mathbf U_j - \mathbf U_i \right)
+\end{equation*}
+dove $c = \max \bigl\{ \abs{\lambda(\mathbf U_i)}, \abs{\lambda(\mathbf U_j)} \bigr\}$ è la massima velocità di propagazione delle onde.
+
+L'implementazione di questo flusso numerico è molto semplice, a costo però di un'eccessiva dissipazione numerica che vicino alle discontinuità tende a smussare gli angoli.
+\subsection{Metodo di Godunov}
+L'idea alla base del metodo è quella di risolvere esattamente su ogni lato un problema di Riemann con onde piane nella direzione $\nn_{ij}$, con dati $\mathbf{U}_i$ e $\mathbf{U}_j$. Sarà quindi:
+\begin{equation*}
+\NumFlux(\mathbf{U}_i, \mathbf{U}_j, \nn_{ij} ) = \Flux( \tilde{\mathbf{U}}_{ij}(0); \nn_{ij} )
+\end{equation*}
+dove $\tilde{\mathbf{U}}_{ij}\left( \frac{\left(\mathbf{x}-\mathbf{m}_{ij}\right) \cdot \nn_{ij}}{t}\right)$ è la soluzione esatta del problema di Riemann all'interfaccia e $\mathbf{m}_{ij}$ è invece il punto medio del lato su cui si sta lavorando.
+\subsection{Flussi numerici approssimati}
+Spesso applicare in modo rigoroso il metodo di Godunov risulta troppo oneroso. Per questo si opta per flussi numerici approssimati, i quali spesso mostrano performances simili a quelle dei solutori esatti.
+
+In letteratura è presente una grande varietà di flussi approssimati, i quali si basano sull'idea di sostituire al flusso esatto una funzione che approssimi la vera soluzione del problema di Riemann con gli stessi dati iniziali. Uno dei solutori più noti è quello di Roe.
+
+Altre tipologie di flussi approssimati, come Rusanov, HLL e HLLC, modificano direttamente il flusso numerico con correzioni adeguate. Questi metodi (così come Roe) necessitano però di una taratura, ossia alcuni parametri che descrivono lo stato del sistema devono essere opportunamente stimati, ad esempio attraverso delle medie particolari.
+
+In particolare, nel caso del problema di Eulero, possiamo utilizzare le seguenti forme esplicite dei flussi citati:
+\begin{align*}
+\NumFlux &= \frac{1}{2}(\NumFlux_L + \NumFlux_R) - \frac{1}{2} S^+ (\textbf{U}_R - \textbf{U}_L) & \text{(Rusanov)} \\[2ex]
+\NumFlux^{\text{hll}} &= 
+\begin{cases}
+\NumFlux_L & \text{se $0 \leq S_L$} \\[2ex]
+\dfrac{S_R\NumFlux_L - S_L\NumFlux_R + S_L S_R (\textbf{U}_R -\textbf{U}_L)}{S_R - S_L} & \text{se $S_L \leq 0 \leq  S_R$} \\[2.5ex]
+\NumFlux_R & \text{se $0 \geq S_R$}
+\end{cases} & \text{(HLL)} \\[2ex]
+\NumFlux^{\text{hllc}} &= 
+\begin{cases}
+\NumFlux_L & \text{se $0 \leq S_L$} \\
+\NumFlux_L + S_L (\textbf{U}_{*L} - \textbf{U}_L ) & \text{se $S_L \leq 0 \leq S_*$}\\
+\NumFlux_R + S_R (\textbf{U}_{*R} - \textbf{U}_R ) & \text{se $S_* \leq 0 \leq S_R$}\\
+\NumFlux_R & \text{se $0 \geq S_R$}
+\end{cases} & \text{(HLLC)}
+\end{align*}
+dove $S^+ = \text{max} \left\{\left|u_L\right| + c_L, \left|u_R\right| + c_R \right\}$, $S_L$ e $S_R$ sono le velocità di propagazione dell'informazione relative alle due onde esterne, $\textbf{U}_L$ e $\textbf{U}_R$ sono gli stati di sinistra e di destra, $S^*$ è la velocità dell'onda centrale (quella nella cosiddetta zona star), quella corrispondente all'autovalore multiplo, mentre $\textbf{U}_{*L}$ e $\textbf{U}_{*R}$ sono opportune stime dello stato del sistema nella zona star.
+
+Infine, il metodo di Roe si basa sull'utilizzo di opportune medie delle variabili che descrivono lo stato del sistema:
+\begin{equation*}
+\begin{aligned}
+\tilde{u} &= \frac{\sqrt{\rho_L} u_L + \sqrt{\rho_R} u_R}{\sqrt{\rho_L} + \sqrt{\rho_R}}; 
+&&\tilde{v} = \frac{\sqrt{\rho_L} v_L + \sqrt{\rho_R} v_R}{\sqrt{\rho_L} + \sqrt{\rho_R}}; \\
+\tilde{H} &= \frac{\sqrt{\rho_L} H_L + \sqrt{\rho_R} H_R}{\sqrt{\rho_L} + \sqrt{\rho_R}}; 
+&&\tilde{c} = (\gamma - 1) \left[\tilde{H} - \frac{1}{2} \tilde{V}^{2} \right] ^{1/2}.
+\end{aligned}
+\end{equation*}
+Con i pedici L e R si sono indicati i valori della relativa grandezza a destra e a sinistra; $\tilde{H}$ è l'entalpia e $\tilde{V}$ è il modulo della velocità mediata.
+Tali grandezze servono per definire un sistema linearizzato la cui soluzione descrive l'evoluzione del sistema. E' poi possibile correggere lo schema di Roe aggiungendo un fix entropico in modo tale da garantire che lo schema legga correttamente le onde di rarefazione transoniche.

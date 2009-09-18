@@ -1,0 +1,67 @@
+/** \mainpage Conservation Law 2D Documentation
+
+<div class="navtop">\b Introduzione
+  | \ref tutorial "Esempi guidati"
+  | \ref half-edge "Gestione della mesh"
+  | \ref solver "Struttura del solutore"
+  | \ref model "Struttura del modello"
+</div>
+
+\section intro Introduzione
+
+\em Conservation \em Law \em 2D è una libreria per la risoluzione di equazioni di conservazione 2D su griglie non strutturate (con elementi poligonali) con il metodo dei Volumi Finiti. 
+
+Il codice permette di risolvere problemi basati su diversi tipi di modelli, con particolar riguardo alle equazioni di Eulero 2D. Non mancano però esempi sulle equazioni dell'acustica o di onde in acque basse. Inoltre è possibile estendere il codice ad altri modelli con relativa semplicità.
+
+\section code_structure La struttura del codice
+\subsection mesh_structure La gestione della mesh
+L'obiettivo primario che si siamo preposti nello sviluppo del progetto è stato quello di creare una struttura dati per la mesh sufficientemente robusta ed estendibile. Infatti una mesh non strutturata porta con sé numerose difficoltà legate essenzialmente alla risoluzione di \em query riguardanti la sua struttura topologica.
+
+Alcuni esempi di query possono essere:
+\li Dato un certo vertice, quali sono i poligoni ad esso adiacenti, ossia quali poligoni hanno tra i propri vertici quello in questione?
+\li Dato un poligono, quali sono i poligoni ad esso adiacenti, cioé che condividono con esso un lato?
+\li Dato un lato, quali sono i poligoni che insistono su di esso?
+\li ... e così via.
+
+Gli oggetti che compongo una mesh sono gli \em elementi, i \em lati e i \em vertici. Ognuno è collegato all'altro secondo relazioni di appartenenza, per esempio un lato è formato da due vertici, e un poligono è un insieme di lati. Quindi se volessi sapere quali sono i vertici del poligono basterebbe scorrere sui lati e restituire i vertici. Già in questo caso molto semplice però vi sono difficoltà: il lato non è in genere orientato, quindi quale dei due vertici considerare? Se ho 3 lati di un triangolo, dei 6 vertici 3 saranno coincidenti, ma non è a priori stabilita una regola per recuperare una lista di elementi unici.
+
+Sono inoltre molto complesse (e quindi dispendiose in termini computazionali) query che devono risolversi in ordine inverso, per esempio recuperare i poligoni adiacenti ad un vertice. In teoria dovrei scorrere tutti i poligoni della mesh e per ognuno scorrere i vertici, e fare un confronto.
+
+Riassumendo, cerchiamo una struttura dati che non soffra troppo nella risoluzione di query di adiacenza, che fornisca un certo orientamento ai lati e che magari non sia dispendiosa in termini di memoria.
+
+Vi sono numerose scelte possibili, molte derivate dalla necessità di rappresentare superficie tridimensionali nella Computer Graphics. Tra queste le più note tra quelle edge-based (ossia dove le query di adiacenza si risolvono basandosi sui lati) sono Winged-Edge, Quad-Edge, Half-Edge.
+
+Nel nostro caso abbiamo fatto riferimento all'ultima tipologia, per l'appunto \em Half-Edge, che verrà approfondita in una sezione \ref half-edge "apposita". L'idea che sta alla base di questa struttura dati è quella di rappresentare un lato come una coppia di lati orientati, e dove ogni "mezzo-lato" ha puntatori al suo gemello, al suo successivo (definito in quanto orientato), al vertice d'origine ed all'elemento subito alla sua sinistra.
+
+Le query anche complesse in questa topologia diventano molto semplici ed intuitive:
+\li I vertici di un poligono si trovano partendo da un suo mezzo lato qualsiasi, restituendo il vertice di quest'ultimo per poi passare al mezzo-lato successivo, e da qui ripetere;
+\li Il poligono adiacente ad un mezzo-lato dato, che è il poligono del lato gemello al lato dato;
+
+Non mancano però le difficoltà, infatti questa struttura dati deve essere modificata in presenza di bordi o di vertici degeneri (un vertice è degenere se è in comune a due poligoni i quali però non hanno lati in comune tra loro, tipo il nodo di un papillion).
+
+\subsection circulators I circolatori
+La struttura dati descritta introduce in modo naturale il concetto di \em circolatore.
+
+È evidente ad esempio che la lista dei vertici di un poligono non ha testa né coda. Quindi partendo da un qualsiasi vertice dovrebbe essere possibile passare a quello subito successivo o precedente, eventualmente tornando su sé stesso dopo un giro completo. Pensando più in prospettiva si può quindi immaginare che anche la risposta di una query di adiacenza sia un circolatore.
+
+\section solvers Il solutore a Volumi Finiti
+Con a disposizione una struttura dati per la mesh, implementare un codice per Volumi Finiti diventa molto semplice. L'idea di base è infatti quella di iterare su ogni poligono e aggiornare la soluzione in esso in base al flusso al bordo (più eventuale termine sorgente). Il flusso numerico generalmente dipende dallo stato della soluzione a destra e a sinistra del lato, più la normale. Se il lato è orientato (come nel nostro caso) la normale è automaticamente quella esterna al poligono, e gli stati destro e sinistro sono definiti chiaramente. Si tratta perciò solo di passare al flusso numerico quanto restituito da queste semplici query.
+
+Il solutore dunque ha solo bisogno di sapere come calcolare il flusso numerico, o meglio che sia specificato un \em modello matematico, come può essere Eulero o le equazioni dell'elasticità lineare.
+
+\section models Il modello
+Il modello deve mettere a disposizione (almeno) quanto segue:
+\li Il numero delle variabili conservate (4 per Eulero bidimensionale, 3 per l'Acustica e per Onde in acque basse);
+\li Il flusso esatto, dato lo stato del sistema, cioè \f$ \mathcal{F}(\mathbf u)\f$;
+\li Il calcolo degli autovettori e autovalori dello Jacobiano del flusso, in direzione normale, ossia di \f$ \mathrm{D}\mathcal{F}(\mathbf{u})\cdot\hat{\mathbf{n}} \f$;
+\li Una conversione tra variabili primitive e variabili conservate (per esempio in Eulero \f$ (\rho,u,v,p) \leftrightarrow (\rho,\rho u, \rho v, \rho e) \f$);
+\li Il calcolo del flusso numerico nel caso in cui si debba utilizzare l'approssimazione di Roe, HLL, HLLC e così via;
+\li Un check-up sulla coerenza fisica dello stato del sistema ( pressione o densità negative? ).
+
+\section prepostprocessing Il pre- e il post-processing
+Il cose gestisce la mesh, ma non le genera, così come risolve i problemi ma non genera grafici in output. Questa scelta è derivata dal fatto che vi sono a disposizione strumenti ben più potenti atti a svolgere tali compiti.
+
+Per quanto riguarda la generazione della mesh si può utilizzare il toolbox \c pdetool di Matlab, molto comodo per disegnare e poi esportare il risultato attraverso lo script \c tools/matlab2msh.m, che compila in automatico un file con la struttura dati.
+
+L'output invece può avvenire sia tramite Matlab (sempre con script ad-hoc) oppure con Gnuplot, utilizzando alcuni script in Perl che automatizzano il processo e generano in automatico anche le animazioni.
+**/

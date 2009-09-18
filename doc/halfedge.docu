@@ -1,0 +1,216 @@
+/** \page half-edge Gestione della mesh
+
+<div class="navtop">\ref index "Introduzione"
+  | \ref tutorial "Esempi guidati"
+  | \b Gestione \b della \b mesh
+  | \ref solver "Struttura del solutore"
+  | \ref model "Struttura del modello"
+</div>
+
+\section half-edge-struct La struttura Half-Edge
+Come accennato, la struttura dati che sta alla base della memorizzazione della mesh è di tipo Half-Edge. Si tratta di una struttura dati edge-based, ossia centralizzata sui lati.
+
+\image html halfedge.png Struttura dati Half-Edge
+
+In Figura sono evidenziati i collegamenti tra i vari mezzi-lati. In particolare abbiamo:
+\li Puntatore all'halfedge gemello;
+\li Puntatore all'halfedge successivo;
+\li Puntatore al lato alla sua sinistra (non mostrato);
+\li Puntatore al primo vertice (non mostrato).
+
+I poligoni hanno invece un solo puntatore ad uno qualsiasi dei suoi lati, così come il vertice ha un puntatore ad uno dei lati che ha esso come vertice d'origine. In realtà la struttura dati per il vertice è molto più complessa.
+
+\subsection vertice_degenere Il caso dei vertici degeneri
+Consideriamo due triangoli che condividono un solo vertice. In questo caso la struttura dati non riesce a rappresentare la mesh perché partendo dal vertice e seguendo il suo puntatore ad uno dei due half-edge rimaniamo "intrappolati" sul triangolo indicato dal lato scelto, senza possibilità di passare a quello adiacente. In questo caso si parla di vertice degenere.
+
+Per ovviare al problema abbiamo studiato una soluzione possibile, che per quanto macchinosa mantiene comunque tempi ragionevoli di accesso. L'idea è quella di salvare nel vertice la lista dei lati (e non solo uno) da si irradiano da esso. Però non è necessario avere un puntatore ad ognuno, piuttosto basta avere un puntatore ai soli lati di bordo e nell'eventualità che il vertice sia interno ad un solo lato qualsiasi.
+
+La struttura dunque è ridondante solo nelle situazioni particolari.
+
+\subsection circolatori_struttura Il funzionamento dei circolatori
+Un esempio pratico di utilizzo dei circolatori è il seguente, dove per ogni vertice viene calcolata l'area media dei poligoni adiacenti.
+\code
+#include <mesh/mesh_default_traits.hpp>
+
+using namespace ConservationLaw2D;
+
+typedef Mesh::DefaultTraits<double> Traits;
+typedef Traits::PolygonalMesh       SimpleMesh;
+
+typedef SimpleMesh::vertex_it                  v_it;
+typedef SimpleMesh::Vertex::PolygonCirculator  vp_cit;
+\endcode
+Lo spezzone principale del codice è:
+\code
+for ( v_it v = mesh.v_begin(); v != mesh.v_end(); ++v ) {
+    size_t count(0);
+    real_t tmparea(0.0);
+    vp_cit p = (*v)->beginP();
+    do {
+        tmparea += p->area();
+        count++;
+        p++;
+    } while( p != (*v)->beginP() );
+    cout << tmparea/count << endl;
+}
+\endcode
+Come si può osservare si scorre su tutti i vertici della mesh tramite iteratore (il ciclo \c for esterno) e poi per ogni vertice viene inizializzato un circolatore che compone il secondo ciclo \c do. Questo codice viene in effetti utilizzato in forma del tutto equivalente per interpolare la soluzione sui vertici.
+
+Il circolatore è definito attraverso una classe unica \c CirculatorTS, specializzata poi attraverso l'uso di template. Si tratta di una classe generica dalla quale sono derivati tutti i circolatori possibili (escludendo quelli riferiti ai lati sono esattamente 6). In questo modo a costo di un livello di astrazione e complessità maggiore si ha un codice molto più compatto.
+
+La specializzazione di un circolatore avviene con una definizione del tipo:
+\code
+typedef typename Circulators::CirculatorTS<KERNEL,Polygon,Vertex>  PolygonCirculator;
+\endcode
+Dove viene definito un circolatore sui poligoni adiacenti al vertice dato. In questo modo la classe automaticamente selezionerà i metodi opportuni per circolare sui poligoni partendo da un vertice.
+
+Essenzialmente le due procedure principali riguardando l'incremento del circolatore (cioè il passaggio all'elemento successivo) e la lettura dell'elemento corrente. Tutti i circolatori infatti non hanno un puntatore all'oggetto corrente, bensì un puntatore ad un particolare half-edge dal quale si risolve facilmente l'elemento corrente.
+
+Sempre considerando il circolatore prima definito, la procedura di lettura ha la forma seguente:
+\code
+return current_hedge->polygonL();
+\endcode
+quindi \c current_hedge è semplicemente un lato del poligono corrente.
+
+Più complessa è la procedura di incremento.
+\code
+typedef typename KERNEL::HEdge_ptr hedge_ptr;
+hedge_ptr tmphe(current_hedge);
+do {
+	current_hedge = &(current_hedge->getNextHEdge());
+} while ( &(current_hedge->getNextHEdge()) != tmphe);
+if ( current_hedge->isBoundary() ) {
+	// Halfedge di bordo
+	current_vertex_hedge = (current_vertex_hedge+1) % hedges->size();
+	current_hedge = (*hedges)[current_vertex_hedge];
+} else {
+	// Tutto regolare
+	current_hedge = &(current_hedge->getTwinHEdge());
+}
+\endcode
+Il primo blocco \c do cerca semplicemente l'halfedge precedente, girando intorno al poligono. Nel secondo blocco \c if invece si controlla se il lato trovato è di bordo o no: nel secondo caso, più semplice, viene semplicemente restituito un puntatore all'halfedge gemello, che avrà alla sua sinistra il poligono adiacente (ciò che cercavamo). Nel secondo caso invece si dovrebbe tornare al punto di partenza (cioè all'halfedge che ha inizializzato il circolatore), però si deve fare attenzione al caso di vertici degeneri. Quindi nel circolatore è tenuta in memoria una lista dei lati di bordo del vertice, in modo che si passa semplicemente al successivo.
+
+La procedura opera in senso antiorario sempre, e questo è garantito anche se il vertice è al bordo o è degenere.
+
+\section letturamesh La costruzione della struttura dati
+La parte più complessa della struttura dati è la procedura atta a riempirla (e probabilmente la più complessa dell'intero codice). Questo perché l'algoritmo deve essere efficiente e allo stesso tempo permette di costruire la mesh in modo incrementale, aggiungendo un elemento alla volta.
+
+Per costruire una mesh si inizia aggiungendo i vertici. Ad esempio:
+\code
+vector<vertex_ptr> vhandle;
+vhandle.reserve(4);
+vhandle[0] = mesh.addVertex(0, 0);
+vhandle[1] = mesh.addVertex(1, 0);
+vhandle[2] = mesh.addVertex(0, 1);
+vhandle[3] = mesh.addVertex(1, 1);
+\endcode
+Gli elementi invece si aggiungono così:
+\code
+vector<vertex_ptr> poly_vertex;
+poly_vertex.reserve(3);
+poly_vertex.push_back( vhandle[0] );
+poly_vertex.push_back( vhandle[1] );
+poly_vertex.push_back( vhandle[2] );
+mesh.addPolygon( poly_vertex );
+
+poly_vertex.clear();
+vector<vertex_ptr> poly_vertex;
+poly_vertex.reserve(3);
+poly_vertex.push_back( vhandle[0] );
+poly_vertex.push_back( vhandle[2] );
+poly_vertex.push_back( vhandle[3] );
+mesh.addPolygon( poly_vertex );
+\endcode
+Guardiamo ora sotto il cofano della procedura \c addPolygon.
+
+Iniziamo con il creare un puntatore ad un poligono:
+\code
+// Creo il poligono
+polygon_ptr poly( new Polygon() );
+\endcode
+A questo punto creiamo i lati impostando per ognuno il poligono corrispondente (ossia quello che stiamo creando) e il vertice iniziale.
+\code
+// Creo i lati del poligono
+size_t nsides = v.size();
+isTriangular_ &= (nsides == 3);
+vector<hedge_ptr> he(nsides);
+for (size_t i = 0; i < nsides; ++i) {
+    // Nuovo halfhedge
+    he[i] = (hedge_ptr)new HEdge();
+    // Imposto il poligono a sinistra del lato
+    he[i]->polygon_ = poly;
+    // Imposto il vertice iniziale
+    he[i]->vertex_ = v[i];
+    // Aggiungo alla lista dei lati
+    hedges_.push_back(he[i]);
+}
+\endcode
+Adesso facciamo in modo che il poligono punti ad uno dei lati appena creati (per esempio il primo):
+\code
+// Aggiungo al poligono uno dei suoi lati
+poly->hedge_ = he[0];
+\endcode
+Adesso dobbiamo costruire i collegamenti tra gli halfedge (sia tra quelli creati che tra quelli già presenti). Si inizia impostando il successivo di ognuno, e poi verifichiamo se il vertice di partenza è nuovo oppure è già presente.
+
+Nel primo caso devo cercare l'halfedge gemello, e sarà quello che nella lista dei lati adiacenti al vertice avrà come vertice il vertice di arrivo del lato in esame. Si fa quindi ricorso al circolatore sui lati.
+
+Nel secondo caso invece per il momento non faccio nulla (questo sarà infatti un lato di bordo e merita particolari attenzioni).
+\code
+// Collegamenti tra halfedge
+typedef typename Vertex::HEdgeCirculator HECirc;
+for (size_t i = 0; i < nsides; ++i) {
+    // Imposto il successivo
+    he[i]->nexthedge_ = he[(i+1)%nsides];
+    // Verifico se il vertice corrispondente e' nuovo
+    if ( v[i]->hedges_.size() != 0 ) {
+        // Gia' presente, cerco eventuali collegamenti
+        HECirc vhec = v[i]->beginE();
+        bool found = false;
+        do {
+            ++vhec;
+            found = ( vhec->vertex_ == v[(i+1)%nsides]);
+        } while(!found && vhec != v[i]->beginE());
+        if (found) {
+            // Trovata corrispondenza, salvo
+            he[i]->twinhedge_ = &(*vhec);
+            poly->hedge_ = he[i];
+            vhec->polygon_->hedge_ = &(*vhec);
+        }
+    }
+}
+\endcode
+Adesso aggiungiamo i lati alla mesh e al vertice corrispondente:
+\code
+// Collego il nuovo elemento con la mesh
+for (size_t i = 0; i < nsides; ++i) {
+    v[i]->hedges_.push_back(he[i]);
+    if ( he[i]->twinhedge_ ) {
+        he[i]->twinhedge_->twinhedge_ = he[i];
+    }
+}
+\endcode
+Ora dobbiamo aggiornare la struttura dati dei vertici, in modo tale da permette ai circolatori di gestire i casi di bordo. Nella lista sono già presenti tutti lati precedentemente aggiunti (che sono tutti di bordo) insieme a quelli aggiunti adesso, che invece possono essere interni. L'idea è quella di scorrerli tutti e rimuovere quelli che non sono più di bordo. Se non dovesse rimanere nulla aggiungo allora un lato caso tra quelli che erano presenti (in questo caso il vertice diventa interno).
+\code
+// Aggiorno la struttura dati dei vertici
+typedef typename vector<hedge_ptr>::iterator Iterator;
+for (size_t i = 0; i < nsides; ++i) {
+    Iterator it = v[i]->hedges_.begin();
+    while ( it != v[i]->hedges_.end() ) {
+        if ( !(*it)->isBoundary() ) {
+            it = v[i]->hedges_.erase( it );
+        } else {
+            ++it;
+        }
+    }
+    // Se e' vuoto ne metto uno a caso
+    if ( v[i]->hedges_.empty() ) {
+        v[i]->hedges_.push_back(he[i]);
+    }
+}
+\endcode
+Infine inseriamo il poligono nella lista della mesh:
+\code
+// Aggiungo il poligono alla mesh
+polygons_.push_back(poly);
+\endcode
+**/

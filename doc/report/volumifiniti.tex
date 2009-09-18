@@ -1,0 +1,34 @@
+\section{Il metodo dei Volumi Finiti su griglie non strutturate}
+Consideriamo un'approssimazione poligonale $\Omega_h$ di $\Omega$, e costruiamone una triangolazione $\mathcal{T}$, ossia un insieme di poligoni chiusi $K_i$, $i=1,\ldots,N$, tale che:
+\begin{enumerate}
+\item $\Omega_h = \bigcup_{i=1}^N K_i$;
+\item Dati $K_i$, $K_j$ con $i\neq j$, sia $K_i \cap K_j = \varnothing$ oppure $K_i \cap K_j$ è un vertice o un lato comune ai due elementi.
+\end{enumerate}
+
+L'idea che sta alla base del metodo dei \emph{Volumi Finiti} è quella di considerare la formulazione integrale relativa all'equazione \eqref{eq:conslawintegrale} ponendo $\omega = K_i$:
+\begin{equation*}
+\ddt{} \int_{K_i} \mathbf u \: \dd{x} + \oint_{\partial K_i} \Flux \cdot \nn \: \dd{\gamma}
+= \int_{K_i} \mathbf S \: \dd{x}
+\end{equation*}
+A questo punto, per $t$ fissato, approssimiamo la soluzione numerica e il temine sorgente come costanti all'interno di ogni elemento $K_{i}$:
+\begin{equation*}
+\mathbf{U}_i(t) \approx \frac{1}{\abs{K_i}} \int_{K_i} \mathbf u(x,t) \: \dd{x}, \qquad
+\mathbf{S}_i(t) \approx \frac{1}{\abs{K_i}} \int_{K_i} \mathbf S(\mathbf{u},x,t) \: \dd{x}
+\end{equation*}
+Sostituendo si ottiene:
+\begin{equation} \label{eq:odefvm}
+\ddt{\mathbf{U}_i(t)} = - \frac{\abs{e_{ij}}}{\abs{K_i}} \sum_{e_{ij} \in \partial K_i} \NumFlux(\mathbf U_i, \mathbf U_j, \nn_{ij}) + \mathbf{S}_i(t)
+\end{equation}
+dove $e_{ij}$ è il lato condiviso dagli elementi $K_i$ e $K_j$ e:
+\begin{equation*}
+\NumFlux(\mathbf U_i, \mathbf U_j, \nn_{ij}) := \frac{1}{\abs{e_{ij}}} \oint_{e_{ij}} \Flux \cdot \nn_{ij} \: \dd{\gamma}
+\end{equation*}
+è il \emph{flusso numerico} attraverso il lato di normale $\nn_{ij}$ (cioè la normale esterna al lato $e_{ij}$ diretta da $K_i$ a $K_j$), calcolato utilizzando i valori della soluzione a destra e a sinistra dell'interfaccia stessa. Esempi di vari flussi numerici si possono trovare nell'Appendice \ref{app:flussinum}.
+
+Utilizzando Eulero esplicito per risolvere \eqref{eq:odefvm} si ottiene il classico \emph{schema a Volumi Finiti}:
+\begin{equation} \label{eq:schemavolumifiniti}
+\mathbf{U}_{i}^{n+1} = \mathbf{U}_{i}^{n} - \Delta t \sum_{e_{ij} \in \partial K_i} \frac{\abs{e_{ij}}}{\abs{K_i}} \NumFlux(\mathbf U^n_i, \mathbf U^n_j, \nn_{ij}) + \mathbf{S}_{i}(\mathbf U^n_{i})
+\end{equation}
+Osserviamo che il valore della soluzione $\mathbf{U}_i$ è assegnata all'intero elemento $K_i$, e non ad uno specifico nodo. Essendo un'approssimazione di ordine zero, si è soliti assegnare questo valore ad un punto interno di $K_i$, tipicamente al baricentro. Questo tipo di discretizzazione è detta \emph{cell-centered}. Dato che i vertici non entrano in gioco direttamente può diventare problematico assegnare condizioni al bordo essenziali, mentre l'assegnazione di condizioni di flusso è affrontata in modo naturale.
+
+Un'alternativa è invece quella di costruire una triangolazione \emph{duale}, composta da poligoni centrati nei vertici della triangolazione originale (per esempio da una triangolazione Delaunay si utilizza come duale il diagramma di Voronoi). Il problema integrale si discretizza quindi sulla triangolazione duale, cosicché assegnando la soluzione al centro dei poligoni si sta automaticamente costruendo la soluzione nei vertici della triangolazione originale. Si può così ovviare al problema delle condizioni al bordo essenziali poiché adesso i nodi al bordo sono ``elementi'' della triangolazione duale. Questo tipo di discretizzazione è detta \emph{vertex-centered}.

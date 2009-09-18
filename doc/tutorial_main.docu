@@ -1,0 +1,137 @@
+/** \page tutorial Esempi guidati
+
+<div class="navtop">\ref index "Introduzione"
+  | \b Esempi \b guidati
+  | \ref half-edge "Gestione della mesh"
+  | \ref solver "Struttura del solutore"
+  | \ref model "Struttura del modello"
+</div>
+
+\li \ref intro_tutorial
+\li \ref dambreak2d_tutorial
+
+\section intro_tutorial Esempio 1: lettura della mesh
+
+Iniziamo con un esempio che permette di leggere una mesh da file cronometrando anche l'esecuzione.
+
+Il file della mesh è strutturato come segue (i commenti sono preceduti da #):
+\verbatim
+# DATA
+133	218	54				# Numero vertici, elementi e lati di bordo
+# POINTS
+-1.000000	0.500000			# Inizia la lista dei vertici:
+-1.000000	-0.500000			#  x  y
+0.000000	-0.200000
+0.100000	-0.200000
+0.100000	0.200000
+[cut]
+-0.063683	0.163276
+0.163695	-0.167380
+-0.069532	-0.241330
+# ELEMENTS					# Inizia la lista degli elementi:
+3	15	1	58	1		#  numero_lati  id_vertice_1  id_vertice_2  ...  colore
+3	22	2	61	0
+[cut]
+3	90	125	131	2
+3	104	112	132	1
+3	2	126	132	1
+# EDGES						# Inizia la lista dei lati di bordo
+0	12	0				#  id_vertice_1  id_vertice_2  colore
+12	13	0
+13	14	0
+[cut]
+14	15	0
+15	1	0
+50	51	13
+51	11	13
+\endverbatim
+La struttura è molto semplice come si può osservare. Il \c colore riguarda la possibilità di assegnare un etichetta (anche non univoca) ad elementi o lati per poter assegnare le condizioni al bordo e inziali, nonché analizzare solo particolari sottodomini. La lista dei lati di bordo è necessaria per poter assegnare le condizioni al bordo.
+
+Andiamo ora nella cartella \c test/testmesh. Qui si può trovare il programma che segue, descritto in dettaglio:
+
+Iniziamo includendo la classe per la gestione della mesh (con tratti di default, ossia non particolareggiata per Volumi Finiti), quella per la lettura della mesh e i moduli per l'output a video il cronometro. Tutto il programma ConservationLaw 2D è sotto il namespace \c ConservationLaw2D.
+\dontinclude test/testmesh/testmesh.cpp
+\skipline #include
+\until using namespace Cons
+Caratterizziamo ora la mesh (tipo poligonale con tratti di default):
+\dontinclude test/testmesh/testmesh.cpp
+\skipline typedef
+\until SimpleMesh
+Il programma principale invece inizia con il controllo del file:
+\dontinclude test/testmesh/testmesh.cpp
+\skipline main
+\until }
+e prosegue con la lettura vera e propria e in output vengono mostrate alcune statistiche:
+\dontinclude test/testmesh/testmesh.cpp
+\skipline clock
+\until }
+Un tipico output è il seguente:
+\verbatim
+====== READING MESH ======
+Mesh stats:
+ Number of vertices: 447937
+ Number of hedges: 2678784
+ Number of polygons: 892928
+ isTriangular: yes
+Memory stats:
+ Vertices: 12248.3 Kbytes
+ Edges: 52320 Kbytes
+ Vertices: 6976 Kbytes
+Time: 2.39 seconds
+\endverbatim
+Il programma si è dimostrato abbastanza rapido nella creazione della struttura dati, almeno confrontato con altre due precedenti versioni dove nella prima, molto lenta, si faceva uso di una tabella di hash per le corrispondenze tra gli elementi, mentre nella seconda si costruiva una struttura dati completa, con tutte le adiacenze registrate.
+
+\section dambreak2d_tutorial Esempio 2: crollo di una diga
+Il secondo esempio riguarda la simulazione del crollo di una diga, usando come modello le equazioni di onde in acque basse.
+
+Nel problema viene considerato il dominio seguente, costruito in MatLab e già discretizzato in triangoli:
+\image html dambreak2dmesh.png Mesh del crollo di una diga
+
+Vediamo il programma. Si inizia includendo il modello (\em Shallow \em Waters), il flusso numerico di Lax-Friedrichs, il solutore a Volumi Finiti e il lettore della mesh. 
+\dontinclude test/dambreak2d/dambreak2d.cpp
+\skipline #include
+\until Law2D
+A questo punto dobbiamo definire il solutore e tutto ciò che esso necessita. Da esso poi deriviamo la mesh, già particolareggiata per risolvere problemi con Volumi Finiti. Viene definito anche il tipo di soluzione, che sarà un vettore della giusta dimensione (grande tanto quante sono le variabili conservate).
+\skipline typedef
+\until SolType
+Definiamo ora le condizioni iniziali (nelle variabili primitive): a destra acqua alta, a sinistra acqua bassa.
+\skipline inline SolType init
+\until }
+Analogamente per le condizioni al bordo (assorbenti nei lati esterni, di parete su quelle interne):
+\skipline inline SolType bc
+\until }
+\until }
+Come si osserva nella signature della funzione vengono passati lo stato a sinistra nelle variabili primitive \c wl, il colore del lato, le coordinate del punto medio, la normale e l'istante di tempo corrente.
+
+Ora che ci sono tutti gli ingredienti si può inizializzare il problema:
+\skipline main
+\until solver.init()
+Nell'inizializzazione vengono automaticamente calcolare e salvate tutte le quantità geometriche fondamentali, per ottimizzare il solutore.
+
+Il passo successivo è quello di far avanzare il solutore:
+\skipline for
+\until }
+\until }
+Unico dettaglio riguarda il salvataggio di un'"istantanea" dello stato del sistema, effettuata tramite il metodo \c framegrab del solutore. Molto semplicemente, bisogna passare la directory dove salvare i file con la soluzione, l'id del frame, il tipo di output (MATLAB o GNUPLOT) e se interpolare la soluzione nei vertici.
+
+L'esecuzione del programma è automatizzata attraverso lo script Perl \c dambreak2d.py che richiede come argomento il file della mesh. Un output tipo è:
+\verbatim
+>> Rimozione dati precedenti:	Fatto!
+>> Simulazione:
+=============================                      
+Init Finite Volume Solver ...                      
+=============================                      
+== Timestep 0 == currtime:        0, dt = -0.0408514
+== Timestep 1 == currtime: 8.61185e-05, dt = 8.61185e-05
+== Timestep 2 == currtime: 0.000172237, dt = 8.61185e-05
+[cut]
+>> Genero frame 0:	Fatto!
+>> Genero frame 1:	Fatto!
+>> Genero frame 2:	Fatto!
+[cut]
+>> Genero animazione:	Fatto!
+\endverbatim
+Il risultato è il seguente (l'animazione si può trovare nella directory \c output):
+\image html dambreak2dmovie.gif Andamento della quota dell'acqua
+
+**/

@@ -1,0 +1,12 @@
+/* ConservationLaw2D documentation stylesheet */
+
+@import "../doxygen.css";
+
+div.navtop {
+	background-color: #e8eef2;
+	border: 1px solid #84b0c7;
+	text-align: center;
+	margin: 2px;
+	margin-right: 15px;
+	padding: 2px;
+}

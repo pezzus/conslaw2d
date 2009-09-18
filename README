@@ -1,0 +1,58 @@
++---------------------------------------------------------------+
+|   IMPLEMENTAZIONE IN C++ DI UN CODICE 2D PER LA RISOLUZIONE   |
+|                   DI LEGGI DI CONSERVAZIONE                   |
++---------------------------------------------------------------+
+
+  Autori: # Martelli Daniela (Mat. 721891)
+               <daniela.martelli@mail.polimi.it>
+          # Pezzuto Simone   (Mat. 724680)
+               <simone.pezzuto@mail.polimi.it>
+
+==:: INSTRUZIONI DI UTILIZZO ::==
+
+|0| Requisiti
+    ^^^^^^^^^
+Il codice sorgente dipende solamente dalla libreria Eigen, che si puo'
+trovare all'indirizzo http://eigen.tuxfamily.org. Questa e' automaticamente
+inclusa nel pacchetto nella directory ./external, visto che anche questa
+libreria e' costituita solamente da header file.
+
+Il compilatore testato e' il gcc versione 4.4.1, e non sono richieste particolari
+CFLAGS se non le istruzioni SSE2 (utilizzate dalla libreria Eigen2 per parallelizzare
+le operazioni sui vettori di piccole dimensioni).
+Non sono stati effettuati test con versioni inferiori, come gcc 3.x.x e gcc 2.95, 
+quindi il comportamento potrebbe essere imprevedibile. Stesso discorso vale per
+altri compilatori (come ICC) o ambienti non Gnu-Linux.
+
+|1| Esempi di utilizzo
+    ^^^^^^^^^^^^^^^^^^
+Il codice non ha bisogno di essere compilato in quanto è semplicemente
+una raccolta di header file. Questo vuol dire che lanciando:
+
+$ make
+
+verranno compilati alcuni esempi contenuti nella directory ./test/ e
+nulla di piu'.
+Consideriamo ad esempio lo shock bubble test, che si può trovare nella
+directory ./test/shockbubble. All'interno abbiamo un file Perl eseguibile
+che gestisce la simulazione. Lanciando:
+
+$ ./shockbubble.pl
+
+verra' mostrata una breve documentazione sull'utilizzo. Ad esempio:
+
+$ ./shockbubble.pl --gnuplot --interpolated shockbubble.msh
+
+risolve il problema con la mesh "shockbubble.msh" e elaborando i risultati
+interpolati sui vertici con Gnuplot.
+Nella directory ./output si possono trovare le animazioni e i singoli frame.
+
+|2| La documentazione
+    ^^^^^^^^^^^^^^^^^
+Per compilare la documentazione (Doxygen e Report) si puo' eseguire:
+
+$ make doc
+
+Per avviare la documentazione Doxygen basta aprire l'indice della
+documentazione ./doc/html/index.html, mentre il Report compilato si
+trovera' direttamente in ./doc/report/report.pdf.

@@ -1,0 +1,82 @@
+/** \page model Struttura dei modelli
+
+<div class="navtop">\ref index "Introduzione"
+  | \ref tutorial "Esempi guidati"
+  | \ref half-edge "Gestione della mesh"
+  | \ref solver "Struttura del solutore"
+  | \b Struttura \b dei \b modelli
+</div>
+
+Gli ultimi ingredienti necessari a completare la ricetta sono il modello, che deve definire metodi per il calcolo del flusso numerico esatto, degli autovalori e via discorrendo, e il flusso numerico.
+
+Osserviamo che il flusso numerico è definito a partire dal modello (pur essendo una classe del tutto diversa): questo perché i flussi approssimati, come Roe, sono definiti ad-hoc per il modello in esame. Solo il flusso di Lax-Friedrichs è definito model-free, perché necessita della sola conoscenza del flusso esatto (e del massimo autovalore locale).
+
+\section model-class Il modello
+Vediamo la struttura generale di un modello (in questo caso Eulero):
+\code
+#define DIMENSION 4
+template <typename T>
+class Eulero {
+	public:
+		// Defininzioni vettori
+		// Vettore per la soluzione
+		typedef T	real_t;
+		typedef Eigen::Matrix<T, DIMENSION, 1>	SolType;
+		typedef Eigen::Matrix<T, DIMENSION, 2>	FluxType;
+		Eulero( real_t gamma ):GAMMA(gamma) {}
+		// Accesso variabili
+		inline real_t R( const SolType& q ) const;
+		inline real_t U( const SolType& q ) const;
+		inline real_t V( const SolType& q ) const;
+		inline real_t E( const SolType& q ) const;
+		inline real_t P( const SolType& q ) const;
+		inline real_t C( const SolType& q ) const;
+		inline real_t H( const SolType& q ) const;
+		inline real_t gamma(void) const;
+		// Variabili primitive <-> Variabili conservate
+		// [rho, u, v, p]      <-> [rho, rho u, rho v, rho e]
+		inline SolType PrimitiveToConservative( const SolType& w ) const;
+		inline SolType ConservativeToPrimitive( const SolType& q ) const;
+		// Controlla se lo stato e' consistente
+		inline bool ConsistentState( const SolType& q ) const;
+		// Flusso
+		inline FluxType Flux( const SolType& q );
+		// Flusso in direzione normale
+		inline SolType NormalFlux( const SolType& q, const real_t nx, const real_t ny ) const;
+		// Massimo autovalore valutato in q
+		inline real_t MaxLambda( const SolType& q );
+		// Autovalori
+		inline SolType EigenValues( const SolType& q, const real_t nx, const real_t ny ) const;
+	private:
+		real_t GAMMA;
+};
+\endcode
+La struttura generale del codice richiede essenzialmente la presenza di metodi per calcolare il flusso, la consistenza dello stato, il massimo autovalore e la conversione da variabili primitive a conservate. Tutti gli altri metodi elencati sono accessori.
+
+Osserviamo infine che il tipo di dato per numeri reali è anch'esso parametrizzato, e può essere scelto proprio nella definizione del modello.
+
+\section numflux-class Flussi numerici
+Il flusso numerico è definito infine come un funtore. Riportiamo a titolo d'esempio il flusso di Lax-Friedrichs:
+\code
+template <typename MODEL>
+class LaxFriedrichs {
+	typedef typename MODEL::real_t     real_t;
+	typedef typename MODEL::SolType    SolType;
+	typedef typename MODEL::FluxType   FluxType;
+	public:
+		LaxFriedrichs(MODEL& m):model(m) {}
+		inline SolType operator()(const SolType& ql, const SolType& qr, const real_t nx, const real_t ny) const { 
+			// Calcolo i flussi
+			FluxType FluxL = model.Flux(ql);
+			FluxType FluxR = model.Flux(qr);
+			// Viscosita' artificiale
+			real_t sigma = max( model.MaxLambda(ql), model.MaxLambda(qr) );
+			// Flusso in direzione normale
+			return 0.5 * ( (FluxL.col(0)+FluxR.col(0))*nx + (FluxL.col(1)+FluxR.col(1))*ny - sigma*(qr-ql) );
+		}
+	private:
+		MODEL& model;
+};
+\endcode
+
+**/

@@ -1,0 +1,21 @@
+data = load('../test/shockbubble/data/solution0005.dat');
+x = p(1,:);
+y = p(2,:);
+[XI,YI] = meshgrid(min(x):0.002:max(x), min(y):0.002:max(y));
+% Plot densita'
+ZI = griddata(x,y,data',XI,YI);
+%[Dx,Dy] = gradient(ZI,0.0001);
+%colormap(flipud(gray(2048)).^10);
+%subplot(2,1,1);
+subplot('Position',[0.0, 0.5, 1.0, 0.5]);
+colormap gray;
+contourf(XI,YI,ZI,80,'LineStyle','none'); hold on;
+contour(XI,YI,ZI,8,'-k');
+caxis([0,4]);
+axis off;
+subplot('Position',[0.0, 0.0, 1.0, 0.5]);
+contourf(XI,-YI,ZI,80,'LineStyle','none'); hold on;
+contour(XI,-YI,ZI,8,'-k');
+caxis([0,4]);
+axis off;
+%pdeplot(p,[],t,'xydata',data,'xystyle','interp','colorbar','off','colormap','gray');

@@ -1,0 +1,50 @@
+\section{Formato dei file}
+Vi sono essenzialmente tre formati di file che il programma utilizza: uno riguardante la descrizione della mesh e due per l'output delle soluzioni.
+
+Riguardo la mesh, il file ha una forma di questo tipo:
+\begin{verbatim}
+# DATA
+133     218     54
+# POINTS
+-1.000000       0.500000
+-1.000000       -0.500000
+0.000000        -0.200000
+[cut]
+-0.063683       0.163276
+0.163695        -0.167380
+-0.069532       -0.241330
+# ELEMENTS
+3       15      1       58      1
+3       22      2       61      0
+[cut]
+3       104     112     132     1
+3       2       126     132     1
+# EDGES
+0       12      0
+12      13      0
+13      14      0
+[cut]
+50      51      13
+51      11      13
+\end{verbatim}
+Il file è suddiviso in quattro sezioni:
+\begin{description}
+\item[\texttt{\# DATA}] Le tre colonne indicano rispettivamente il numero di vertici, di poligoni e di lati di bordo;
+\item[\texttt{\# POINTS}] Ogni riga è un vertice, del quale vengono fornite le coordinate;
+\item[\texttt{\# ELEMENTS}] Ogni riga è un poligono, e le colonne sono rispettivamente il numero di lati, l'id dei vertici (in senso antiorario) ed infine il colore dell'elemento;
+\item[\texttt{\# EDGES}] Ogni riga è un lato di bordo, del quale si forniscono i vertici e il colore.
+\end{description}
+
+Un file di questo tipo può essere facilmente generato in Matlab utilizzando \texttt{matlab2msh.m}, script presente nella directory \texttt{tools}. Da un punto di vista pratico ci si appoggia al toolbox \texttt{pdetool}, col quale genera mesh (il risultato dovrebbero essere tre variabili \texttt{p}, \texttt{e} e \texttt{t}), per poi eseguire:
+\begin{verbatim}
+>> matlab2msh(p,e,t,'nomefile.msh');
+\end{verbatim}
+Automaticamente come etichette \texttt{colore} dei poligoni e dei lati vengono assegnate ``d'ufficio'' rispettivamente l'id del sottodominio e l'id del bordo. Attraverso l'interfaccia grafica di \texttt{pdetool} è anche possibile visualizzare queste etichette.
+
+Per quanto riguarda l'output su file della soluzione, come accennato ci sono due formati, il primo per l'output grafico in Matlab mentre il secondo per l'output in Gnuplot.
+
+Nel primo caso si ha semplicemente una lista di valori, dove ogni riga è il valore della soluzione nel vertice corrispondente, secondo lo stesso ordinamento del file della mesh in input. Vi sono inoltre tante colonne quante sono le variabili del problema (4 per Eulero).
+
+La soluzione è automaticamente interpolata sui vertici, e si può visualizzare in Matlab importando il file in una variabile e utilizzando poi i comandi \texttt{pdeplot} o \texttt{trisurf}. Sempre nella directory \texttt{tools} vi sono alcuni esempi pratici, come la generazione di una animazione.
+
+L'ultimo formato riguarda il dataset della soluzione pronto per essere utilizzato in Gnuplot attraverso il comando \texttt{splot}\footnote{Nella visualizzazione tridimensionale potrebbe esserci della grafica corrotta, probabilmente perché il comando è disegnato per utilizzare dataset con griglie cartesiane. Nel nostro caso infatti per rappresentare i triangoli costruiamo dei quadrilateri degeneri.}. In questo caso si può decidere se interpolare la soluzione sui vertici oppure no.

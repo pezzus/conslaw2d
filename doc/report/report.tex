@@ -1,0 +1,123 @@
+\documentclass[a4paper,fontsize=10pt,italian,pdftex]{scrartcl}
+
+% FONT, INPUT, BABEL
+\usepackage[italian]{babel}
+\usepackage[T1]{fontenc}
+\usepackage[utf8x]{inputenc}
+\usepackage[activate,tracking,spacing]{microtype}
+\usepackage{lmodern}
+\usepackage[a4paper]{geometry}
+\microtypecontext{spacing=nonfrench}
+
+% ALTRO
+\usepackage{amsmath,amsfonts,amsthm,amssymb,mathrsfs,textcomp,wasysym}
+\usepackage[pdftex]{graphicx}
+\usepackage{subfig}
+\usepackage{url}
+\usepackage{indentfirst}
+
+% MACRO
+\newcommand{\dd}[1]{\mathrm{d}#1}
+\newcommand{\ddt}[1]{\frac{\dd #1}{\dd{t}}}
+\newcommand{\pdd}[2]{\dfrac{\partial #1}{\partial #2}}
+\newcommand{\Flux}{\mathbf{F}}
+\newcommand{\NumFlux}{\mathbf{\mathcal{F}}}
+\newcommand{\nn}{\hat{\mathbf{n}}}
+\newcommand{\abs}[1]{\left| #1 \right|}
+\DeclareMathOperator{\diverg}{div}
+\DeclareMathOperator{\diam}{diam}
+
+% PDF
+\usepackage[bookmarks=true,pdftex,unicode,hypertexnames=false,pdfborder={0 0 0}]{hyperref} 
+\hypersetup{
+pdfauthor = {Simone Pezzuto e Daniela Martelli},
+pdftitle = {Implementazione in C++ di un codice 2D per la risoluzione di leggi di conservazione non lineari},
+pdfsubject = {Progetto nell'ambito del corso di Programmazione Avanzata e Calcolo Scientifico per la Fluidodinamica}}
+
+% BIBLIO
+\usepackage{amsrefs}
+
+%STILE
+\setkomafont{caption}{\small}
+\setkomafont{captionlabel}{\small\bfseries\sffamily}
+
+%LISTATI
+\usepackage{color}
+\definecolor{commenti}{rgb}{0.13,0.55,0.13}
+\definecolor{stringhe}{rgb}{0.63,0.125,0.94}
+\usepackage{listings}
+\lstloadlanguages{C++}
+\lstset{basicstyle = \scriptsize,
+keywordstyle = \bfseries \color{blue},
+identifierstyle =,
+numbers=left,stepnumber=1,numberstyle=\tiny,tabsize=3,
+commentstyle = \color{commenti},
+stringstyle = \ttfamily \color{stringhe},
+showstringspaces = false, % no special string spaces
+%emph = {for, if, then, else, end},
+%emphstyle = \color{blue},
+firstnumber = auto, % numero della prima linea
+language = {C++}, % per riconoscere la sintassi matlab
+extendedchars = true, % per abilitare caratteri particolari
+breaklines = true, % per mandare a capo le righe troppo lunghe
+breakautoindent = true, % indenta le righe spezzate
+breakindent = 30pt, % indenta le righe di 30pt
+}
+
+\begin{document}
+\nocite{*}
+% INTESTAZIONE
+\begin{center}
+\rule{\textwidth}{0.1mm}
+\LARGE\sffamily{\bfseries{Implementazione in C++ di un codice 2D per la risoluzione di leggi di conservazione non lineari}}
+\rule[0.4cm]{\textwidth}{0.1mm}
+
+\begin{minipage}{0.4\textwidth}
+\begin{center}
+\Large
+Daniela Martelli\\ \small
+(Matr. \textbf{721891})
+\end{center}
+\end{minipage}
+\begin{minipage}{0.4\textwidth}
+\begin{center}
+\Large
+Simone Pezzuto\\ \small
+(Matr. \textbf{724680})
+\end{center}
+\end{minipage}
+
+\vspace{0.5cm}
+\itshape\large Settembre 2009
+\vspace{0.5cm}
+
+\end{center}
+% FINE INTESTAZIONE
+\begin{abstract}
+\small
+Lo scopo di questo progetto è implementare in C++ il metodo dei Volumi Finiti per la risoluzione di leggi di conservazione non lineari in due dimensioni su griglie non strutturate.
+
+In questo report, dopo una breve introduzione alle leggi di conservazione e al metodo dei Volumi Finiti, cercheremo di descrivere la struttura del codice \texttt{ConservationLaw2D} ponendo particolare enfasi alle scelte effettuate nel corso dello sviluppo.
+
+In particolare ci soffermeremo sugli aspetti algoritmici legati alle principali difficoltà incontrate, come la gestione di una mesh non strutturata o la possibilità di rendere modulare il codice, mentre delegheremo la descrizione delle procedure più standard alla documentazione interna.
+
+Infine nell'ultima parte forniremo due esempi applicativi sul funzionamento del codice: il primo, con il modello delle onde in acque basse, riguardante il crollo di una diga (\emph{Dam Break Problem}), mentre il secondo, con il modello di Eulero, riguarderà l'interazione di un'onda di shock con una bolla (\emph{Shock Bubble Problem}).
+\end{abstract}
+\input{leggiconservazione.tex}
+\input{volumifiniti.tex}
+\input{implementazione.tex}
+\input{esempinumerici.tex}
+\input{conclusioni.tex}
+\newpage
+% BIBLIO
+\begin{bibdiv}
+\begin{biblist}
+\bibselect{biblio}
+\end{biblist}
+\end{bibdiv}
+% APPENDICE
+\newpage
+\appendix
+\input{flussinumerici.tex}
+\input{formatofiles.tex}
+\end{document}

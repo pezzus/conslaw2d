@@ -1,0 +1,107 @@
+\bib{Kroner97}{book}{
+  author={Dietmar Kr{\"o}ner},
+  title={Numerical {S}chemes for {C}onservation {L}aws},
+  year={1997},
+  publisher={Wiley Teubner},
+}
+
+\bib{Williams1998307}{article}{
+  title={A study of liquid jets formed by bubble collapse under shock waves in elastic and Newtonian liquids},
+  journal={Journal of Non-Newtonian Fluid Mechanics},
+  volume={76},
+  number={1-3},
+  pages={307 - 325},
+  year={1998},
+  note={},
+  issn={0377-0257},
+  doi={10.1016/S0377-0257(97)00124-9},
+  author={P. R. Williams and P. M. Williams and S. W. J. Brown},
+}
+
+\bib{Toro97}{book}{
+  author={Eleuterio F. Toro},
+  title={Riemann {S}olvers and {N}umerical {M}ethods for {F}luid {D}ynamics},
+  year={1997},
+  publisher={Springer-Verlang},
+}
+
+\bib{Quart08}{book}{
+  author={Alfio Quarteroni},
+  title={Modellistica {N}umerica per {P}roblemi {D}ifferenziali},
+  year={2008},
+  publisher={Springer-Verlang},
+}
+
+\bib{Hestwar08}{book}{
+  author={Jan S. Hesthaven and Tim Warburton},
+  title={Nodal {D}iscontinous {G}alerkin {M}ethods: {A}lgorithms, {A}nalysis, and {A}pplications},
+  year={2008},
+  publisher={Springer},
+}
+
+\bib{Hirsch07}{book}{
+  author={Charles Hirsch},
+  title={Numerical {C}omputation of {I}nternal and {E}xternal {F}lows},
+  volume={1},
+  year={2007},
+  publisher={John Wiley {\&} Sons},
+}
+
+\bib{LeVeque04}{book}{
+  author={Randall J. LeVeque},
+  title={Finite {V}olume {M}ethods for {H}yperbolic {P}roblems},
+  year={2004},
+  publisher={Cambridge University Press},
+}
+
+\bib{QuartValli94}{book}{
+  author={Alfio Quarteroni and Alberto Valli},
+  title={Numerical {A}pproximation of {P}artial {D}ifferential {E}quations},
+  year={1994},
+  publisher={Springer-Verlang},
+}
+
+\bib{Wesseling01}{book}{
+  author={Pieter Wesseling},
+  title={Principles of {C}omputational {F}luid {D}ynamics},
+  year={2001},
+  publisher={Springer-Verlang},
+}
+
+\bib{Yang01}{book}{
+  author={Daoqui Yang},
+  title={C++ and {O}bject {O}riented {N}umeric {C}omputing for {S}cientists and {E}ngineers},
+  year={2001},
+  publisher={Springer-Verlang},
+}
+
+\bib{BenDor07}{book}{
+  author={G. Ben-Dor},
+  title={Shock {W}ave {R}eflection {P}henomena},
+  year={2007},
+  publisher={Springer-Verlang},
+}
+
+\bib{Chorin93}{book}{
+  author={Alexandre J. Chorin and Jerrold E. Marsden},
+  title={A {M}athematical {I}ntroduction to {F}luid {M}echanics},
+  year={1993},
+  publisher={Springer-Verlang},
+}
+
+\bib{Chan97}{article}{
+  author={K. Anastasiou and C. T. Chan},
+  title={SOLUTION OF THE {2D} SHALLOW WATER EQUATIONS USING THE FINITE VOLUME METHOD ON UNSTRUCTURED TRIANGULAR MESHES},
+  journal={International Journal For Numerical Methods In Fluids},
+  year={1997},
+  volume={24},
+  pages={1225-1245},
+}
+
+\bib{LeVeque97}{unpublished}{
+  title={A wave propagation method for three-dimensional hyperbolic conservation laws},
+  year={1997},
+  author={J.O. Langseth and R.J. LeVeque},
+  note={\url {http://www.math.ntnu.no/conservation/1997/003.ps}},
+}
+
